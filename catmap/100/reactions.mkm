@@ -1,5 +1,6 @@
 import sys
-from input_master import *
+#from input_master import *
+
 
 # Reaction network
 rxn_expressions=[
@@ -39,8 +40,6 @@ species_definitions = {}
 # pressures
 species_definitions['ele_g'] = {'pressure':1.0, 'composition':{}}
 species_definitions['CO_g'] = {'pressure':1.0}
-species_definitions['CHO_g'] = {'pressure':0.0}
-species_definitions['COH_g'] = {'pressure':0.0}
 species_definitions['H2_g'] = {'pressure':0.0}
 species_definitions['H2O_g'] = {'pressure':0.035}
 species_definitions['OH_g'] = {'pressure':0.0}
@@ -62,7 +61,6 @@ cross_interaction_mode = 'geometric_mean' #use geometric mean for cross paramete
 
 species_definitions['100'] = {'site_names': ['100'], 'total':1.0}
 species_definitions['100']['interaction_response_parameters'] = {'cutoff':0.25,'smoothing':0.05}
-species_definitions['dl'] = {'site_names': ['dl'], 'total':1.0}
 species_definitions['CO_100'] = {'self_interaction_parameter':[eCO],
 	'cross_interaction_parameters':{
 	'H_100': [eHCO],
