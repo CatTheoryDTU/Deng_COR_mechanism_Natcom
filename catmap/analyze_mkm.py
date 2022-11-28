@@ -10,7 +10,6 @@ from general_tools import lin_fun
 from catmap import analyze
 
 plt.rcParams["figure.figsize"] = (10,5)
-#plt.rcParams["font.family"] = "Times New Roman"
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["font.size"] = 16
 plt.rc('axes', labelsize=28)    # fontsize of the x and y labels
@@ -21,64 +20,62 @@ markersize=10
 
 home=os.getcwd()
 path_info=home.split('/')
-add_total_rate_as_panel=False #Not working yet
-facet=path_info[-1]
-products=['H2_g']
-coverages=['CO_'+facet,'H_'+facet]
-#cov_and_rate={'coverage':['CO_'+facet,'H_'+facet],'production_rate': ['H2_g']}
+if len(sys.argv) < 2:
+    print('Facet needs to be given in the command line!')
+    exit()
+facet=sys.argv[1]
+
 cov_and_rate={'coverage':['H_'+facet],'production_rate': ['H2_g']}
 
-
 def main():
-    from catmap import ReactionModel
-    model = ReactionModel(setup_file = 'reactions.mkm')
-    model.output_variables+=['production_rate', 'free_energy','coverage']
-    model.run()
+    model=run_catmap(facet)
+
     dattype='coverage'
     steps=[]
     for i,label in enumerate(model.output_labels[dattype]):
-        print(label)
         if label in cov_and_rate[dattype]:
             steps.append(i)
     nsteps=len(steps)
-    fig,ax=plt.subplots(nsteps)
 
-    #print([i for i in model.__dict__.keys() if 'label' in i])
-    #print(model.output_labels)
-#    orders=read_logfile('reactions.log')
-    if 0: run_catmaps_own_analysis(model)
+    fig,ax=plt.subplots(nsteps)
 
     data,phs,pots=extract_data_from_mkm(model)
     plot_heatplot(data,phs,pots,steps,fig,ax)
-#    data,phs,pots=extract_data_from_mkm(model,dattype='rate')
-#    plot_heatplot(data,phs,pots,nsteps)
+
     if nsteps == 1:
-        ax.annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
-        ax.set_title(f'Cu({facet})',fontsize=40)
+#        ax.annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
+#        ax.set_title(f'Cu({facet})',fontsize=40)
         ax.set_xlabel('U vs SHE / V')
+        if facet == '100':
+            ax.annotate('(a) Cu(100)',(-1.7,13.5),ha='left',va='top',fontsize=40)
+        else:
+            ax.annotate('(b) Cu(211)',(-1.7,13.5),ha='left',va='top',fontsize=40)
     else:
         ax[1].annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
         ax[0].annotate('*CO',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
         ax[1].set_xlabel('U vs SHE / V')
 
         ax[0].set_title(f'Cu({facet})',fontsize=40)
-    plt.savefig(f'../../results/Coverages_{facet}.pdf')
+    plt.savefig(f'../results/Coverages_{facet}.pdf')
     plt.show()
 
-#def read_logfile(logfile):
+def run_catmap(facet,runbasedir=home):
+    os.chdir(runbasedir+'/'+facet)
+    from catmap import ReactionModel
+    model = ReactionModel(setup_file = 'reactions.mkm')
+    model.output_variables+=['production_rate', 'free_energy','coverage']
+    model.run()
+    os.chdir(home)
+    return model
 
 def plot_heatplot(data,phs,pots,steps,fig,ax,dattype='coverage'):
-
-    #print(model.output_labels)
     X=np.array(sorted(pots))
     Y=np.array(sorted(phs))
     nsteps=len(steps)
 
     for col in range(1):
-     #for istep in range(nsteps):
      for istep in steps:
         R,S = get_rate_and_selectivity(col,istep,data,nsteps,X,Y)
-        #print(R)
         plot_it(R,S,fig,ax,col,istep,X,Y,nsteps)
         if 0:
          if istep == nsteps-1:
@@ -92,15 +89,11 @@ def plot_heatplot(data,phs,pots,steps,fig,ax,dattype='coverage'):
         else:
             ax[istep].set_ylabel('pH')
 
-        #ax[istep][1].set_yticks([])
 
 
 def get_rate_and_selectivity(col,istep,data,steps,X,Y):
-
     Selectivity=np.ones((len(X),len(Y)))*0.5
     rate=np.ones((len(X),len(Y)))*0.5
-    #print(data[-0.4][14])
-    #dd
     for ix,x in enumerate(X):
        for iy,y in enumerate(Y):
         try:
@@ -140,8 +133,7 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
                     vmax=1,
                     aspect='auto')#, vmin=-abs(alldata[:,2]).max())
         if istep == 1:
-            fig.colorbar(b,ax=ax,shrink=1,label='Coverage')#,orientation='horizontal') #,location='top',orientation='horizontal')
-#        plt.colorbar(b)
+            fig.colorbar(b,ax=ax,shrink=1,label='*H Coverage')#,orientation='horizontal') #,location='top',orientation='horizontal')
 
 
 def extract_data_from_mkm(model,dattype='coverage'):
@@ -178,7 +170,6 @@ def read_data(infile='mkm.pkl'):
         if ph not in phs:
             phs.append(ph)
     return data,phs,pots
-
 
 def run_catmaps_own_analysis(model):
         if not os.path.exists('output'):
