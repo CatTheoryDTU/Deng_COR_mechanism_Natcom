@@ -4,6 +4,7 @@
 # The base directory is ```catmap```
 # In order to run the microkinetic models simply run
 python3 analyze_mkm.py 100
+
 python3 analyze_mkm.py 211
 
 # The results will be written into ```../results```
