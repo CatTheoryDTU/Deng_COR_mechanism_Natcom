@@ -1,9 +1,9 @@
 import pickle as pkl
 import sys,os
 sys.path.append('..')
-import scripts.plot_env
-from scripts.FED_tools import plot_FED_with_barrier,read_calculated_data
-from scripts.intermediates_dict import ads_and_electron
+import tools.plot_env
+from tools.FED_tools import plot_FED_with_barrier,read_calculated_data
+from tools.intermediates_dict import ads_and_electron
 import numpy as np
 
 facets=['100','211']
