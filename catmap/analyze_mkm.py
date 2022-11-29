@@ -8,56 +8,65 @@ import pickle as pkl
 from scipy.optimize import curve_fit
 from general_tools import lin_fun
 from catmap import analyze
+sys.path.append('../scripts')
+import plot_env
 
-plt.rcParams["figure.figsize"] = (10,5)
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["font.size"] = 16
-plt.rc('axes', labelsize=28)    # fontsize of the x and y labels
-plt.rcParams['xtick.labelsize'] = 18
-plt.rcParams['ytick.labelsize'] = 18
-plt.rcParams['figure.figsize'] = (12,7)
-markersize=10
+dg0={'100':0.295,'211':0.048}
 
 home=os.getcwd()
-path_info=home.split('/')
+
 if len(sys.argv) < 2:
     print('Facet needs to be given in the command line!')
     exit()
 facet=sys.argv[1]
 
+#cov_and_rate={'coverage':['H_'+facet,'CO_'+facet],'production_rate': ['H2_g']}
 cov_and_rate={'coverage':['H_'+facet],'production_rate': ['H2_g']}
 
+dattype='coverage'
 def main():
     model=run_catmap(facet)
 
-    dattype='coverage'
     steps=[]
     for i,label in enumerate(model.output_labels[dattype]):
         if label in cov_and_rate[dattype]:
             steps.append(i)
     nsteps=len(steps)
+    print(model.output_labels[dattype],steps)
 
     fig,ax=plt.subplots(nsteps)
 
-    data,phs,pots=extract_data_from_mkm(model)
+    data,phs,pots=extract_data_from_mkm(model,steps,dattype)
     plot_heatplot(data,phs,pots,steps,fig,ax)
-
-    if nsteps == 1:
-#        ax.annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
-#        ax.set_title(f'Cu({facet})',fontsize=40)
-        ax.set_xlabel('U vs SHE / V')
-        if facet == '100':
-            ax.annotate('(a) Cu(100)',(-1.7,13.5),ha='left',va='top',fontsize=40)
-        else:
-            ax.annotate('(b) Cu(211)',(-1.7,13.5),ha='left',va='top',fontsize=40)
-    else:
-        ax[1].annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
-        ax[0].annotate('*CO',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
-        ax[1].set_xlabel('U vs SHE / V')
-
-        ax[0].set_title(f'Cu({facet})',fontsize=40)
-    plt.savefig(f'../results/Coverages_{facet}.pdf')
+    add_annotations(ax,nsteps)
+    plt.savefig(f'../results/{dattype}_{facet}.pdf')
     plt.show()
+
+def add_annotations(ax,nsteps):
+    if nsteps == 1:
+        topax,botax=ax,ax
+    else:
+        topax,botax=ax
+
+    botax.set_xlabel('U vs SHE / V')
+    if facet == '100':
+            topax.annotate('(a) Cu(100)',(-1.7,13.5),ha='left',va='top',fontsize=40)
+    else:
+            topax.annotate('(b) Cu(211)',(-1.7,13.5),ha='left',va='top',fontsize=40)
+    H_eq_line=[]
+    for pHs in range(4,15):
+            H_eq_line.append([-dg0[facet]-0.059*pHs,pHs])
+    H_eq_line=np.array(H_eq_line)
+    botax.plot(H_eq_line[:6,0],H_eq_line[:6,1],'--k')
+    botax.plot(H_eq_line[7:,0],H_eq_line[7:,1],'--k')
+    botax.set_xlim(-1.7,-0.4)
+    botax.annotate('U$_{RHE}$=-$\Delta$G$^0_\mathrm{H}$',H_eq_line[6],rotation=300,ha='center',va='center')
+
+    if nsteps > 1:
+        ax[1].annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
+        ax[0].annotate('*CO',(-1.7,4.5),ha='left',va='bottom',fontsize=40,fontweight='bold')
+
+
 
 def run_catmap(facet,runbasedir=home):
     os.chdir(runbasedir+'/'+facet)
@@ -101,15 +110,20 @@ def get_rate_and_selectivity(col,istep,data,steps,X,Y):
                 Selectivity[ix][iy]=data[x][y][istep]/np.sum(data[x][y][:nsteps])
             else:
                 rate[ix][iy]=data[x][y][istep]#/np.sum(data[x][y][:nsteps])
-                print(rate,data[x][y][istep])
+                #print(rate,data[x][y][istep])
         except:
             Selectivity[ix][iy]=np.nan#data[x][y][istep]#/np.sum(data[x][y][:3])
             rate[ix][iy]=1e-20#np.nan#data[x][y][istep]#/np.sum(data[x][y][:nsteps])
     return rate, Selectivity
 
 def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
-        if facet == '211': vmin=1e-3
-        else: vmin=1e-6
+        if dattype=='coverage':
+            if facet == '211': vmin=1e-3
+            else: vmin=1e-6
+            vmax=1
+        elif dattype=='production_rate':
+            vmin=1e-3
+            vmax=1e3
 
         if nsteps == 1:
             thisax=ax
@@ -121,7 +135,7 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
                 cmap=cm.jet,
                    origin='lower', extent=[X.min(), X.max(), Y.min(), Y.max()],norm=LogNorm(),#,
                     vmin=vmin,
-                    vmax=1e0,#)
+                    vmax=vmax,#)
                     aspect='auto')#, vmin=-abs(alldata[:,2]).max())
 
         else:
@@ -133,16 +147,26 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
                     vmax=1,
                     aspect='auto')#, vmin=-abs(alldata[:,2]).max())
         if istep == 1:
-            fig.colorbar(b,ax=ax,shrink=1,label='*H Coverage')#,orientation='horizontal') #,location='top',orientation='horizontal')
+            if dattype == 'coverage':
+                label='Coverage'
+            elif dattype == 'production_rate':
+                label='TOF / s$^{-1}$'
+        if nsteps == 1:
+            if dattype == 'coverage':
+                label='*H Coverage'
+            elif dattype == 'production_rate':
+                label='TOF / s$^{-1}$'
+        if istep == 1 or nsteps == 1:
+            fig.colorbar(b,ax=ax,shrink=1,label=label)#,orientation='horizontal') #,location='top',orientation='horizontal')
 
 
-def extract_data_from_mkm(model,dattype='coverage'):
+def extract_data_from_mkm(model,steps,dattype='coverage'):
     data={}
     pots,phs=[],[]
 
     if dattype=='coverage':
         datin=model.coverage_map
-    elif dattype=='rate':
+    elif dattype=='production_rate':
         datin=model.production_rate_map
 
     for dat in datin:
