@@ -1,17 +1,9 @@
-#!/usr/bin/env python
+#! /usr/bin/env python3
 import sys, os
-from matplotlib import pyplot as plt
-from matplotlib.colors import LogNorm
-from matplotlib import cm
-import numpy as np
-import pickle as pkl
-from scipy.optimize import curve_fit
-from general_tools import lin_fun
 from catmap import analyze
-sys.path.append('../scripts')
-import plot_env
+sys.path.append('..')
+from tools.plot_env import *
 
-dg0={'100':0.295,'211':0.048}
 
 home=os.getcwd()
 
@@ -27,18 +19,13 @@ dattype='coverage'
 def main():
     model=run_catmap(facet)
 
-    steps=[]
-    for i,label in enumerate(model.output_labels[dattype]):
-        if label in cov_and_rate[dattype]:
-            steps.append(i)
-    nsteps=len(steps)
-    print(model.output_labels[dattype],steps)
-
-    fig,ax=plt.subplots(nsteps)
-
+    steps=[i for i,label in enumerate(model.output_labels[dattype])
+           if label in cov_and_rate[dattype]]
     data,phs,pots=extract_data_from_mkm(model,steps,dattype)
+
+    fig,ax=plt.subplots(len(steps))
     plot_heatplot(data,phs,pots,steps,fig,ax)
-    add_annotations(ax,nsteps)
+    add_annotations(ax,len(steps))
     plt.savefig(f'../results/{dattype}_{facet}.pdf')
     plt.show()
 
@@ -54,6 +41,7 @@ def add_annotations(ax,nsteps):
     else:
             topax.annotate('(b) Cu(211)',(-1.7,13.5),ha='left',va='top',fontsize=40)
     H_eq_line=[]
+    dg0={'100':0.295,'211':0.048}
     for pHs in range(4,15):
             H_eq_line.append([-dg0[facet]-0.059*pHs,pHs])
     H_eq_line=np.array(H_eq_line)
@@ -65,8 +53,6 @@ def add_annotations(ax,nsteps):
     if nsteps > 1:
         ax[1].annotate('*H',(-1.7,13.5),ha='left',va='top',fontsize=40,fontweight='bold')
         ax[0].annotate('*CO',(-1.7,4.5),ha='left',va='bottom',fontsize=40,fontweight='bold')
-
-
 
 def run_catmap(facet,runbasedir=home):
     os.chdir(runbasedir+'/'+facet)
@@ -98,8 +84,6 @@ def plot_heatplot(data,phs,pots,steps,fig,ax,dattype='coverage'):
         else:
             ax[istep].set_ylabel('pH')
 
-
-
 def get_rate_and_selectivity(col,istep,data,steps,X,Y):
     Selectivity=np.ones((len(X),len(Y)))*0.5
     rate=np.ones((len(X),len(Y)))*0.5
@@ -109,11 +93,10 @@ def get_rate_and_selectivity(col,istep,data,steps,X,Y):
             if col == 1:
                 Selectivity[ix][iy]=data[x][y][istep]/np.sum(data[x][y][:nsteps])
             else:
-                rate[ix][iy]=data[x][y][istep]#/np.sum(data[x][y][:nsteps])
-                #print(rate,data[x][y][istep])
+                rate[ix][iy]=data[x][y][istep]
         except:
-            Selectivity[ix][iy]=np.nan#data[x][y][istep]#/np.sum(data[x][y][:3])
-            rate[ix][iy]=1e-20#np.nan#data[x][y][istep]#/np.sum(data[x][y][:nsteps])
+            Selectivity[ix][iy]=np.nan
+            rate[ix][iy]=1e-20
     return rate, Selectivity
 
 def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
@@ -136,7 +119,7 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
                    origin='lower', extent=[X.min(), X.max(), Y.min(), Y.max()],norm=LogNorm(),#,
                     vmin=vmin,
                     vmax=vmax,#)
-                    aspect='auto')#, vmin=-abs(alldata[:,2]).max())
+                    aspect='auto')
 
         else:
          a = thisax[1].imshow(S.T,
@@ -145,7 +128,8 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
                    origin='lower', extent=[X.min(), X.max(), Y.min(), Y.max()],#norm=LogNorm(),#,
                     vmin=0,
                     vmax=1,
-                    aspect='auto')#, vmin=-abs(alldata[:,2]).max())
+                    aspect='auto')
+
         if istep == 1:
             if dattype == 'coverage':
                 label='Coverage'
@@ -156,8 +140,9 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
                 label='*H Coverage'
             elif dattype == 'production_rate':
                 label='TOF / s$^{-1}$'
+
         if istep == 1 or nsteps == 1:
-            fig.colorbar(b,ax=ax,shrink=1,label=label)#,orientation='horizontal') #,location='top',orientation='horizontal')
+            fig.colorbar(b,ax=ax,shrink=1,label=label)
 
 
 def extract_data_from_mkm(model,steps,dattype='coverage'):
