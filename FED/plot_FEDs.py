@@ -6,13 +6,13 @@ from tools.FED_tools import plot_FED_with_barrier,read_calculated_data
 from tools.intermediates_dict import ads_and_electron
 import numpy as np
 
-facets=['100','211']
+facets=['100','211','111']
 SHE_potentials=[-1.2]
 entype='G'
 pH=13
 facet='100'
 SHE_abs=4.4
-labels=['(a)','(b)']
+labels=['(a)','(b)','(c)']
 
 params={'pH':[pH],
         'potentials':[i+SHE_abs for i in SHE_potentials],
@@ -30,10 +30,10 @@ params={'pH':[pH],
 
 for ifac,facet in enumerate(facets):
 
-    if facet == '211':
+    if facet in ['211','111','100']:
         params['emphasize_barriers']=[['clean','H'],['H','H2_g']]
-    elif facet == '100':
-        params['emphasize_barriers']=[['clean','H'],['H','HH'],['HH','H2_g']]
+#    elif facet == '100':
+#        params['emphasize_barriers']=[['clean','H'],['H','HH'],['HH','H2_g']]
 
     read_calculated_data(0,start_from_pkl=True,pklfile='../data/parsed_data.pckl',indict=ads_and_electron)
 
@@ -80,7 +80,8 @@ for ifac,facet in enumerate(facets):
     plt.annotate('RDS',(0.5,(eh[0]*pot+eh[1])),fontsize=40,ha='center',va='bottom').draggable()
 
     SHE=r'V$_{\mathrm{SHE}}$'
-    plt.annotate(f'Cu({facet}), {SHE_potentials[0]}{SHE}, pH {pH}',(-0.2,-1.1),fontsize=40,ha='left').draggable()
+    color='k'
+    plt.annotate(f'Cu({facet}), {SHE_potentials[0]}{SHE}, pH {pH}',(-0.2,-1.1),fontsize=40,ha='left',color=color).draggable()
     plt.savefig(f'../results/FED_{facet}.pdf')
     plt.show()
     plt.close()
