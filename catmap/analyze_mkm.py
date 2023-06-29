@@ -3,6 +3,7 @@ import sys, os
 from catmap import analyze
 sys.path.append('..')
 from tools.plot_env import *
+from catmaphelpers.catmap_plotter import _make_plots, _plot_model, _plot_CV, post_process_CV, _compute_tafel_prate, plot_tafel_screening, _get_unit_cell_area, _plot_pH, _plot_map, _plot_pH_bar_coverage
 
 
 home=os.getcwd()
@@ -11,10 +12,16 @@ if len(sys.argv) < 2:
     print('Facet needs to be given in the command line!')
     exit()
 facet=sys.argv[1]
+AperSite = _get_unit_cell_area(a_input=3.6149)
+ec = 1.602176e-19; A2cm = 1e-8
+tof2cur = (1e3*ec/(A2cm*A2cm))/AperSite[facet]
+tof2cur = {'C2+':8*tof2cur, 'Ac':4*tof2cur, 'tot':1.0,'EtOH':8*tof2cur,'C1':6*tof2cur,'HER':2*tof2cur,'C2H4':8*tof2cur}
 
 #cov_and_rate={'coverage':['H_'+facet,'CO_'+facet],'production_rate': ['H2_g']}
 cov_and_rate={'coverage':['H_'+facet],'production_rate': ['H2_g']}
-
+facet_ratio={'111':0.5,'100':0.2,'211':0.05}
+dattype='production_rate'
+rateunit='TOF'
 dattype='coverage'
 def main():
     model=run_catmap(facet)
@@ -24,7 +31,7 @@ def main():
     data,phs,pots=extract_data_from_mkm(model,steps,dattype)
 
     fig,ax=plt.subplots(len(steps))
-    plot_heatplot(data,phs,pots,steps,fig,ax)
+    plot_heatplot(data,phs,pots,steps,fig,ax,dattype=dattype)
     add_annotations(ax,len(steps))
     plt.savefig(f'../results/{dattype}_{facet}.pdf')
     plt.show()
@@ -37,11 +44,13 @@ def add_annotations(ax,nsteps):
 
     botax.set_xlabel('U vs SHE / V')
     if facet == '100':
-            topax.annotate('(a) Cu(100)',(-1.7,13.5),ha='left',va='top',fontsize=40)
-    else:
+            topax.annotate('(a) Cu(100)',(-1.7,13.5),ha='left',va='top',color='w',fontsize=40)
+    elif facet == '211':
             topax.annotate('(b) Cu(211)',(-1.7,13.5),ha='left',va='top',fontsize=40)
+    elif facet == '111':
+            topax.annotate('(c) Cu(111)',(-1.7,13.5),ha='left',va='top',fontsize=40)
     H_eq_line=[]
-    dg0={'100':0.295,'211':0.048}
+    dg0={'100':0.295,'211':0.048,'111':0.197099}
     for pHs in range(4,15):
             H_eq_line.append([-dg0[facet]-0.059*pHs,pHs])
     H_eq_line=np.array(H_eq_line)
@@ -71,6 +80,9 @@ def plot_heatplot(data,phs,pots,steps,fig,ax,dattype='coverage'):
     for col in range(1):
      for istep in steps:
         R,S = get_rate_and_selectivity(col,istep,data,nsteps,X,Y)
+        if dattype == 'production_rate':
+            if rateunit != 'TOF':
+                R*=facet_ratio[facet]*tof2cur['HER']
         plot_it(R,S,fig,ax,col,istep,X,Y,nsteps)
         if 0:
          if istep == nsteps-1:
@@ -102,10 +114,10 @@ def get_rate_and_selectivity(col,istep,data,steps,X,Y):
 def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
         if dattype=='coverage':
             if facet == '211': vmin=1e-3
-            else: vmin=1e-6
+            else: vmin=1e-8
             vmax=1
         elif dattype=='production_rate':
-            vmin=1e-3
+            vmin=1e-5
             vmax=1e3
 
         if nsteps == 1:
@@ -134,12 +146,18 @@ def plot_it(R,S,fig,ax,col,istep,X,Y,nsteps):
             if dattype == 'coverage':
                 label='Coverage'
             elif dattype == 'production_rate':
-                label='TOF / s$^{-1}$'
+                if rateunit == 'TOF':
+                    label = 'TOF / s$^{-1}$'
+                else:
+                    label='j$_{\mathrm{HER}}$ / (mA/cm$^2$)'
         if nsteps == 1:
             if dattype == 'coverage':
                 label='*H Coverage'
             elif dattype == 'production_rate':
-                label='TOF / s$^{-1}$'
+                if rateunit == 'TOF':
+                    label = 'TOF / s$^{-1}$'
+                else:
+                    label='j$_{\mathrm{HER}}$ / (mA/cm$^2$)'
 
         if istep == 1 or nsteps == 1:
             fig.colorbar(b,ax=ax,shrink=1,label=label)
