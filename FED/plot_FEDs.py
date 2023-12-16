@@ -6,7 +6,7 @@ from tools.FED_tools import plot_FED_with_barrier,read_calculated_data
 from tools.intermediates_dict import ads_and_electron
 import numpy as np
 
-facets=['100','211','111']
+facets=['100','211']
 SHE_potentials=[-1.2]
 entype='G'
 pH=13
